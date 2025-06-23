@@ -1,0 +1,141 @@
+**Fork()
+ ========
+
+-->fork() creates a new child process by duplicating the calling (parent) process.
+-->The child gets a copy of the parent's address space, file descriptors, and execution state.
+-->It returns different values to parent and child, allowing you to know who is who.
+
+
+/**
+
+>>Before fork() (just parent)
+  ===========================
+
+Process: Parent
++----------------------------+        +------------------------+
+| Virtual Address 0x400000   |──────▶| Physical Page A (Code) |
+| Virtual Address 0x601000   |──────▶| Physical Page B (Data) |
+| Virtual Address 0x800000   |──────▶| Physical Page C (Heap) |
++----------------------------+        +------------------------+
+--Virtual addresses 0x400000, 0x601000, 0x800000 each map to physical memory via page tables.
+
+
+>>After fork() (before any writes)
+  ================================
+
+Process: Parent                  Process: Child
++----------------------------+   +----------------------------+
+| 0x400000 ─────┐            |   | 0x400000 ─────┐            |
+| 0x601000 ─────┼────┐       |   | 0x601000 ─────┼────┐       |
+| 0x800000 ─────┘    │       |   | 0x800000 ─────┘    │       |
++----------------------------+   +----------------------------+
+                     │                       		      │
+                     ▼                       	        ▼
+                +------------------------+-------------------------+
+                | Physical Page A (Code) | Shared with child       |
+                | Physical Page B (Data) | Shared (Copy-on-write)  |
+                | Physical Page C (Heap) | Shared (Copy-on-write)  |
+                +------------------------+-------------------------+
+
+>>At this stage:
+----------------
+* Same virtual addresses in both processes.
+* Same physical pages — until write happens.
+* Enabled by Copy-On-Write (COW).
+
+
+
+>>After Child Writes to 0x800000 (Heap)
+  =====================================
+
+Process: Parent                  Process: Child
++----------------------------+    +----------------------------+
+| 0x400000 ─────┐             |   | 0x400000 ─────┐     	      |
+| 0x601000 ─────┼────┐        |   | 0x601000 ─────┼────┐	      |
+| 0x800000 ─────┘    |	       |   | 0x800000 ─────┘    |	      |
++----------------------------+    +----------------------------+
+                     │                        │        │
+                     ▼                        ▼  	     ▼
+        +------------------------+----------------+--------------------+
+        | Physical Page A (Code) | Physical Page B| Physical Page D    |
+        | Shared (Read-only)     | (Data - shared)| Child's new Heap   |
+        +------------------------+----------------+--------------------+
+Now:
+----
+-->Child wrote to heap (0x800000).
+-->OS created a new physical page (Page D) for child.
+-->Parent still sees the original Page C.
+-->This is how COW works: Only copied on first write.
+
+**/
+
+
+✅ Final Answer:
+
+--After we call fork(), the parent and child processes have the same virtual address layout. This means they have the same virtual pages (like stack, heap, etc.) with the same virtual addresses.
+Initially, these virtual pages in both processes are mapped to the same physical pages in RAM using the Copy-On-Write (COW) mechanism. These pages are marked as read-only to detect when one of the processes tries to write.
+
+When either the parent or the child tries to write to one of these shared pages:
+--A page fault occurs.
+--The Operating System creates a new physical page for the writing process only.
+--The contents from the original page are copied into the new physical page.
+--The process’s virtual page is remapped to point to the new private physical page.
+--Then the write is allowed.
+
+
+ Copy-On-Write Mechanism – Text Block Diagram
+🔹 Situation: Child tries to write to a shared page (e.g., heap)
+
+[ Before Write ]
+
+  Process: Parent                  Process: Child
++---------------------+          +---------------------+
+| 0x800000 (Heap) ─┐  |          | 0x800000 (Heap) ─┐  |
++---------------------+          +---------------------+
+               │                           │
+               ▼                           ▼
+        [ Physical Page C ]     ◄──────────┘
+        (Shared via Copy-On-Write)
+
+✅ Both processes share the same physical page.
+✅ Page is marked read-only to trigger Copy-On-Write if written.
+
+
+🔹 Step-by-step when child writes to 0x800000
+[ Write Attempt → Page Fault ]
+
+1️⃣ Page fault occurs because page is marked read-only  
+2️⃣ OS allocates a new physical page: [Physical Page D]  
+3️⃣ OS copies contents of Page C → Page D  
+4️⃣ OS updates Child's page table:
+       0x800000 now → [Physical Page D]
+5️⃣ Write operation is retried and now allowed
+
+🔹 Updated Mapping After Copy-On-Write
+
+[ After Write ]
+
+  Process: Parent                  Process: Child
++---------------------+          +---------------------+
+| 0x800000 ───────────┘          | 0x800000 ───────────┘
++---------------------+          +---------------------+
+       │                                  │
+       ▼                                  ▼
+[ Physical Page C ]              [ Physical Page D ]
+(Parent Heap - unchanged)        (Child's modified copy)
+
+
+✅ Now:
+--Same virtual address (0x800000)
+--Different physical memory
+--No longer shared
+
+
+So:
+--The virtual address remains the same.
+--The physical memory becomes different after the first write.
+--The original physical page (used by the other process) is not affected.
+--This ensures memory isolation between parent and child after any modifications.
+
+
+
