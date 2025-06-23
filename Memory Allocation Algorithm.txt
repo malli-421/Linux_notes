@@ -1,0 +1,158 @@
+Memory Allocation:
+
+When a process requests memory (e.g., using malloc()), the Operating System or Memory Manager must decide:
+
+-->Which free memory block to allocate?
+-->How to allocate memory efficiently?
+
+To solve this, the OS maintains a Free Memory List and uses allocation strategies to pick a suitable free block.
+
+These strategies are called:
+	1. First-Fit
+	2. Best-Fit
+	3. Worst-Fit
+	4. Next-Fit
+
+Each algorithm defines how the OS searches and selects free memory blocks.
+
+ 1. First-Fit Algorithm (Allocate First Suitable Block)
+🔸 Concept:
+..The memory is scanned from the beginning of the free list.
+..The first block that is large enough to hold the requested        memory is selected.
+..If the block is larger than needed, it is split and the leftover part is returned to the free list.
+
+🔹 Characteristics:
+..Fast allocation (minimal searching)
+..Can cause fragmentation near the start of memory
+..Easy to implement
+
+📘 Theory:
+>> Start scanning from the beginning of memory.
+>> Allocate the first block that is large enough.
+
+✅ Example:
+Request = 150 KB
+Scan:
+-Block A (100 KB) → ❌ Too small
+-Block B (500 KB) → ✅ Enough space → Allocate from here
+
+Result:
+Block B is split:
+	-150 KB allocated
+	-350 KB leftover → stays in free list
+
+Updated Free List:
+
+Block A → 100 KB  
+Block B → 350 KB (leftover)  
+Block C → 200 KB  
+Block D → 300 KB
+
+
+2. Best-Fit Algorithm (Allocate Smallest Sufficient Block)
+🔸 Concept:
+--The entire free memory list is scanned.
+--The smallest block that is large enough is selected.
+--Aim is to minimize leftover space (reduce fragmentation).
+
+🔹 Characteristics:
+--May leave very small unusable fragments
+--More time-consuming (scans all free blocks)
+--Better space utilization in ideal conditions
+
+📘 Theory:
+..Scan all blocks
+..Choose the smallest block that fits the request
+
+✅ Example:
+Request = 150 KB
+Scan all:
+	--Block A → 100 KB ❌
+	--Block B → 500 KB ✅
+	--Block C → 200 KB ✅ (best match)
+	--Block D → 300 KB ✅
+	--Best Fit is Block C (200 KB)
+
+Result:
+Block C is split:
+	-150 KB allocated
+	-50 KB leftover → stays in free list
+
+Updated Free List:
+
+Block A → 100 KB  
+Block B → 500 KB  
+Block C → 50 KB (leftover)  
+Block D → 300 KB
+
+
+ 3. Worst-Fit Algorithm (Allocate Largest Block)
+🔸 Concept:
+--The entire memory is scanned.
+--The largest available block is selected for allocation.
+--Leaves a large leftover part, assuming it will be useful later.
+
+🔹 Characteristics:
+--Tries to avoid creating small leftover fragments
+--Often results in wasted space
+--Less commonly used in practice
+
+📘 Theory:
+--Scan all blocks
+--Choose the smallest block that fits the request
+
+✅ Example:
+Request = 150 KB
+Scan all:
+	--Block A → 100 KB ❌
+	--Block B → 500 KB ✅
+	--Block C → 200 KB ✅ (best match)
+	--Block D → 300 KB ✅
+	--Best Fit is Block C (200 KB)
+
+Result:
+Block C is split:
+	--150 KB allocated
+	--50 KB leftover → stays in free list
+
+Updated Free List:
+
+Block A → 100 KB  
+Block B → 500 KB  
+Block C → 50 KB (leftover)  
+Block D → 300 KB
+
+
+ 4. Next-Fit Algorithm (Allocate From Last Position)
+🔸 Concept:
+--Works like First-Fit, but instead of always starting at the beginning, it resumes from where it left off in the last allocation.
+--If it reaches the end of the memory, it wraps around to the beginning (circular scan).
+
+🔹 Characteristics:
+--Distributes free space more evenly
+--Faster than Best-Fit, but not as fast as First-Fit
+--Can still cause fragmentation
+
+📘 Theory:
+Like First-Fit, but starts from last allocated position, not always from the beginning.
+
+✅ Example:
+Assume last allocation happened at Block A, so we start search from Block B.
+
+Request = 150 KB
+Scan:
+Block B → 500 KB ✅
+      → Allocate from here
+
+Result:
+Block B is split:
+	--150 KB allocated
+	--350 KB leftover → stays in free list
+	--Next search will continue from Block C
+
+Updated Free List:
+
+Block A → 100 KB  
+Block B → 350 KB (leftover)  
+Block C → 200 KB  
+Block D → 300 KB
